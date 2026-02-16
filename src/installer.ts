@@ -48,7 +48,11 @@ async function resolveVersion(version: string): Promise<string> {
   return tag.replace(/^v/, "");
 }
 
-function getDownloadUrl(version: string, platform: string, arch: string): string {
+function getDownloadUrl(
+  version: string,
+  platform: string,
+  arch: string,
+): string {
   const ext = platform === "Windows" ? "zip" : "tar.gz";
   return `https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/v${version}/dagryn_${platform}_${arch}.${ext}`;
 }

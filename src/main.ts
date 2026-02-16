@@ -17,6 +17,9 @@ async function run(): Promise<void> {
 
     core.setOutput("status", result.exitCode === 0 ? "success" : "failure");
     core.setOutput("duration", result.duration.toString());
+    if (inputs.matrixLabel) {
+      core.setOutput("matrix-label", inputs.matrixLabel);
+    }
 
     if (result.exitCode !== 0) {
       core.setFailed(`Dagryn run failed with exit code ${result.exitCode}`);

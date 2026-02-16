@@ -28248,6 +28248,33 @@ function getInputs() {
     }
     const targetsStr = core.getInput("targets").trim();
     const targets = targetsStr ? targetsStr.split(/\s+/) : [];
+    // Parse matrix context
+    const matrixContextStr = core.getInput("matrix-context").trim();
+    let matrixContext = {};
+    if (matrixContextStr) {
+        try {
+            const parsed = JSON.parse(matrixContextStr);
+            if (typeof parsed !== "object" ||
+                parsed === null ||
+                Array.isArray(parsed)) {
+                throw new Error("matrix-context must be a JSON object");
+            }
+            for (const [key, value] of Object.entries(parsed)) {
+                matrixContext[key] = String(value);
+            }
+        }
+        catch (error) {
+            if (error instanceof SyntaxError) {
+                throw new Error(`Invalid JSON in matrix-context: ${matrixContextStr}`);
+            }
+            throw error;
+        }
+    }
+    // Auto-generate matrix label from context values if not explicitly set
+    let matrixLabel = core.getInput("matrix-label").trim();
+    if (!matrixLabel && Object.keys(matrixContext).length > 0) {
+        matrixLabel = Object.values(matrixContext).join(" / ");
+    }
     return {
         version: core.getInput("version") || "latest",
         targets,
@@ -28258,6 +28285,8 @@ function getInputs() {
         verbose: core.getBooleanInput("verbose"),
         workingDirectory: core.getInput("working-directory") || ".",
         dryRun: core.getBooleanInput("dry-run"),
+        matrixLabel,
+        matrixContext,
     };
 }
 
@@ -28441,6 +28470,9 @@ async function run() {
         await (0, summary_1.writeSummary)(inputs, result);
         core.setOutput("status", result.exitCode === 0 ? "success" : "failure");
         core.setOutput("duration", result.duration.toString());
+        if (inputs.matrixLabel) {
+            core.setOutput("matrix-label", inputs.matrixLabel);
+        }
         if (result.exitCode !== 0) {
             core.setFailed(`Dagryn run failed with exit code ${result.exitCode}`);
         }
@@ -28522,12 +28554,26 @@ async function runDagryn(inputs) {
     for (const target of inputs.targets) {
         args.push(target);
     }
+    // Build matrix environment variables
+    const env = {
+        ...process.env,
+    };
+    for (const [key, value] of Object.entries(inputs.matrixContext)) {
+        env[`DAGRYN_MATRIX_${key.toUpperCase().replace(/-/g, "_")}`] = value;
+    }
+    if (inputs.matrixLabel) {
+        env["DAGRYN_MATRIX_LABEL"] = inputs.matrixLabel;
+    }
     core.info(`Running: dagryn ${args.join(" ")}`);
+    if (inputs.matrixLabel) {
+        core.info(`Matrix leg: ${inputs.matrixLabel}`);
+    }
     const start = Date.now();
     let exitCode = 0;
     try {
         exitCode = await exec.exec("dagryn", args, {
             cwd: inputs.workingDirectory,
+            env,
         });
     }
     catch (error) {
@@ -28590,34 +28636,45 @@ const core = __importStar(__nccwpck_require__(7484));
 async function writeSummary(inputs, result) {
     const status = result.exitCode === 0 ? "Success" : "Failure";
     const statusIcon = result.exitCode === 0 ? "\u2705" : "\u274c";
-    await core.summary
-        .addHeading("Dagryn Workflow Run")
-        .addTable([
+    const heading = inputs.matrixLabel
+        ? `Dagryn Workflow Run: ${inputs.matrixLabel}`
+        : "Dagryn Workflow Run";
+    const summary = core.summary.addHeading(heading).addTable([
         [
             { data: "Status", header: true },
             { data: "Duration", header: true },
             { data: "Config", header: true },
         ],
-        [
-            `${statusIcon} ${status}`,
-            `${result.duration}s`,
-            inputs.config,
-        ],
-    ])
-        .addHeading("Configuration", 3)
-        .addTable([
+        [`${statusIcon} ${status}`, `${result.duration}s`, inputs.config],
+    ]);
+    // Add matrix context table if present
+    const matrixEntries = Object.entries(inputs.matrixContext);
+    if (matrixEntries.length > 0) {
+        summary.addHeading("Matrix", 3);
+        summary.addTable([
+            [
+                { data: "Variable", header: true },
+                { data: "Value", header: true },
+            ],
+            ...matrixEntries.map(([key, value]) => [key, value]),
+        ]);
+    }
+    summary.addHeading("Configuration", 3).addTable([
         [
             { data: "Setting", header: true },
             { data: "Value", header: true },
         ],
-        ["Targets", inputs.targets.length > 0 ? inputs.targets.join(", ") : "(default)"],
+        [
+            "Targets",
+            inputs.targets.length > 0 ? inputs.targets.join(", ") : "(default)",
+        ],
         ["Parallel", inputs.parallel?.toString() ?? "auto"],
         ["Cache", inputs.noCache ? "disabled" : "enabled"],
         ["Remote Cache", inputs.remoteCache ? "enabled" : "disabled"],
         ["Dry Run", inputs.dryRun ? "yes" : "no"],
         ["Verbose", inputs.verbose ? "yes" : "no"],
-    ])
-        .write();
+    ]);
+    await summary.write();
 }
 
 

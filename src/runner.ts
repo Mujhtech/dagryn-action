@@ -36,7 +36,21 @@ export async function runDagryn(inputs: ActionInputs): Promise<RunResult> {
     args.push(target);
   }
 
+  // Build matrix environment variables
+  const env: Record<string, string> = {
+    ...(process.env as Record<string, string>),
+  };
+  for (const [key, value] of Object.entries(inputs.matrixContext)) {
+    env[`DAGRYN_MATRIX_${key.toUpperCase().replace(/-/g, "_")}`] = value;
+  }
+  if (inputs.matrixLabel) {
+    env["DAGRYN_MATRIX_LABEL"] = inputs.matrixLabel;
+  }
+
   core.info(`Running: dagryn ${args.join(" ")}`);
+  if (inputs.matrixLabel) {
+    core.info(`Matrix leg: ${inputs.matrixLabel}`);
+  }
 
   const start = Date.now();
   let exitCode = 0;
@@ -44,6 +58,7 @@ export async function runDagryn(inputs: ActionInputs): Promise<RunResult> {
   try {
     exitCode = await exec.exec("dagryn", args, {
       cwd: inputs.workingDirectory,
+      env,
     });
   } catch (error) {
     // exec.exec throws on non-zero exit code

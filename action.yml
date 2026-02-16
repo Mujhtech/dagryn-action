@@ -42,12 +42,22 @@ inputs:
     description: "Show plan without executing"
     required: false
     default: "false"
+  matrix-label:
+    description: "Label for this matrix leg (e.g., 'Node 20 / Linux')"
+    required: false
+    default: ""
+  matrix-context:
+    description: "JSON object of matrix variables to pass as DAGRYN_MATRIX_* env vars"
+    required: false
+    default: ""
 
 outputs:
   status:
     description: "Run status (success / failure)"
   duration:
     description: "Total duration in seconds"
+  matrix-label:
+    description: "The matrix label for this leg"
 
 runs:
   using: "node20"
