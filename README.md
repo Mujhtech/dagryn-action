@@ -7,13 +7,13 @@ Run [Dagryn](https://github.com/mujhtech/dagryn) workflows in GitHub Actions. Th
 ### Basic
 
 ```yaml
-- uses: mujhtech/dagryn@v1
+- uses: mujhtech/dagryn-action@v1
 ```
 
 ### With options
 
 ```yaml
-- uses: mujhtech/dagryn@v1
+- uses: mujhtech/dagryn-action@v1
   with:
     version: "0.5.0"
     targets: "build test"
@@ -31,7 +31,7 @@ strategy:
     os: [ubuntu-latest, macos-latest]
 steps:
   - uses: actions/checkout@v4
-  - uses: mujhtech/dagryn@v1
+  - uses: mujhtech/dagryn-action@v1
     with:
       matrix-label: "Node ${{ matrix.node }} / ${{ matrix.os }}"
       matrix-context: '{"node": "${{ matrix.node }}", "os": "${{ matrix.os }}"}'
@@ -42,7 +42,7 @@ Matrix variables are exposed as `DAGRYN_MATRIX_*` environment variables (e.g. `D
 ### Remote cache
 
 ```yaml
-- uses: mujhtech/dagryn@v1
+- uses: mujhtech/dagryn-action@v1
   with:
     remote-cache: true
 ```
@@ -50,7 +50,7 @@ Matrix variables are exposed as `DAGRYN_MATRIX_*` environment variables (e.g. `D
 ### Dry run
 
 ```yaml
-- uses: mujhtech/dagryn@v1
+- uses: mujhtech/dagryn-action@v1
   with:
     dry-run: true
 ```
